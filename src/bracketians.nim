@@ -1,8 +1,8 @@
-import std/[strutils, strformat, sequtils, tables]
+import std/[strutils, sequtils, tables]
 
 
 type
-    BracketianNodeKind = enum
+    BracketianNodeKind* = enum
         bnNothing
         bnInt
         bnFloat
@@ -13,27 +13,27 @@ type
         bnCall
         bnTable
 
-    BracketianNode = ref object
+    BracketianNode* = ref object
         case kind: BracketianNodeKind
         of bnNothing: discard
-        of bnInt: intVal: int
-        of bnFloat: floatVal: float
-        of bnString: text: string
-        of bnSymbol: symbol: string
-        of bnBool: boolVal: bool
+        of bnInt: intVal*: int
+        of bnFloat: floatVal*: float
+        of bnString: strVal*: string
+        of bnSymbol: symbol*: string
+        of bnBool: boolVal*: bool
         of bnList:
-            list: seq[BracketianNode]
-        of bnCall:
-            fn: string
-            args: seq[BracketianNode]
+            list*: seq[BracketianNode]
         of bnTable:
-            table: Table[BracketianNode, BracketianNode]
+            table*: Table[BracketianNode, BracketianNode]
+        of bnCall:
+            fn*: string
+            args*: seq[BracketianNode]
 
-    BnParser = proc(
+    BnParser* = proc(
         calledBy: string, nodes: seq[BracketianNode]): BracketianNode {.nimcall.}
 
     # IR :: intermidiate representation
-    IRMap = Table[string, BnParser]
+    IRMap* = Table[string, BnParser]
 
     ParserStates = enum
         psInitial
@@ -57,7 +57,7 @@ func `$`(node: BracketianNode): string =
         $node.intVal
 
     of bnString:
-        '"' & node.text & '"'
+        '"' & node.strVal & '"'
 
     of bnSymbol:
         node.symbol
@@ -95,7 +95,7 @@ proc parse*(
         case state:
         of psString:
             if c == '"' and s[i-1] != '\\':
-                acc.add BracketianNode(kind: bnString, text: s[temp .. i-1])
+                acc.add BracketianNode(kind: bnString, strVal: s[temp .. i-1])
                 reset()
 
         of psSymbol:
@@ -156,6 +156,3 @@ proc parse*(s: string, pm: IRMap): seq[BracketianNode] =
     sref[] = s
     parse(sref, pm)
 
-
-var pppp: IRMap
-echo parse(readFile "./play.nim", pppp).join "\n"
