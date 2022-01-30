@@ -9,8 +9,9 @@ type
         bnBool
         bnString
         bnSymbol
-        bnData
+        bnList
         bnCall
+        bnTable
 
     BracketianNode = ref object
         case kind: BracketianNodeKind
@@ -20,11 +21,13 @@ type
         of bnString: text: string
         of bnSymbol: symbol: string
         of bnBool: boolVal: bool
-        of bnData:
-            data: seq[BracketianNode]
+        of bnList:
+            list: seq[BracketianNode]
         of bnCall:
             fn: string
             args: seq[BracketianNode]
+        of bnTable:
+            table: Table[BracketianNode, BracketianNode]
 
     BnParser = proc(
         calledBy: string, nodes: seq[BracketianNode]): BracketianNode {.nimcall.}
@@ -59,8 +62,11 @@ func `$`(node: BracketianNode): string =
     of bnSymbol:
         node.symbol
 
-    of bnData:
-        '(' & node.data.join(" ") & ')'
+    of bnList:
+        '(' & node.list.join(" ") & ')'
+
+    of bnTable:
+        '{' & node.table.pairs.toseq.mapIt($it[0] & ':' & $it[1]).join(" ") & '}'
 
     of bnCall:
         '[' & node.fn & ' ' & node.args.join(" ") & ']'
@@ -150,6 +156,6 @@ proc parse*(s: string, pm: IRMap): seq[BracketianNode] =
     sref[] = s
     parse(sref, pm)
 
-var pppp: IRMap
 
-echo parse(readFile "./eg1.nim", pppp).join "\n"
+var pppp: IRMap
+echo parse(readFile "./play.nim", pppp).join "\n"
