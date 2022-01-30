@@ -63,15 +63,11 @@ func `$`(node: BracketianNode): string =
         '(' & node.data.join(" ") & ')'
 
     of bnCall:
-        '['& node.fn & ' ' & node.args.join(" ") & ']'
-
-func add(b: var BracketianNode, n: BracketianNode) =
-    doassert b.kind == bnData, $b.kind
-    b.data.add n
+        '[' & node.fn & ' ' & node.args.join(" ") & ']'
 
 proc parse*(
     s: ref string, pm: IRMap,
-    startI: int, acc: var BracketianNode
+    startI: int, acc: var seq[BracketianNode]
 ): int =
     ## return the last index that was there
 
@@ -88,7 +84,7 @@ proc parse*(
 
     while i < s[].len:
         let c = s[i]
-        echo state
+        # echo state
 
         case state:
         of psString:
@@ -119,11 +115,11 @@ proc parse*(
         of psInitial:
             case c:
             of '[':
-                var node = BracketianNode(kind: bnData)
-                echo ">>"
-                i = parse(s, pm, i+1, node)
-                echo "<<"
-                acc.add BracketianNode(kind: bnCall, fn: node.data[0].symbol, args: node.data[1..^1])
+                var nodes: seq[BracketianNode]
+                i = parse(s, pm, i+1, nodes)
+
+                acc.add BracketianNode(kind: bnCall, fn: nodes[0].symbol,
+                        args: nodes[1..^1])
 
             of ']':
                 done()
@@ -134,7 +130,7 @@ proc parse*(
             of {'0' .. '9', '.'}:
                 state = psNumber
                 temp = i
-            
+
             of '"':
                 state = psString
                 temp = i+1
@@ -143,18 +139,17 @@ proc parse*(
                 state = psSymbol
                 temp = i
 
-        echo (i, c)
+        # echo (i, c)
         i.inc
 
-proc parse*(s: ref string, pm: IRMap): BracketianNode =
-    result = BracketianNode(kind: bnData)
+proc parse*(s: ref string, pm: IRMap): seq[BracketianNode] =
     discard parse(s, pm, 0, result)
 
-proc parse*(s: string, pm: IRMap): BracketianNode =
+proc parse*(s: string, pm: IRMap): seq[BracketianNode] =
     let sref = new string
     sref[] = s
     parse(sref, pm)
 
 var pppp: IRMap
 
-echo parse(readFile "./eg1.nim", pppp)
+echo parse(readFile "./eg1.nim", pppp).join "\n"
