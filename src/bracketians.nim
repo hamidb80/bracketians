@@ -4,14 +4,10 @@ import std/[strutils, sequtils, tables]
 type
     BracketianNodeKind* = enum
         bnNothing
-        bnInt
-        bnFloat
-        bnBool
-        bnString
+        bnBool, bnInt, bnFloat, bnString
+        bnList, bnTable
         bnSymbol
-        bnList
         bnCall
-        bnTable
 
     BracketianNode* = ref object
         case kind: BracketianNodeKind
@@ -29,10 +25,11 @@ type
             fn*: string
             args*: seq[BracketianNode]
 
+
+    # IR :: intermidiate representation
     BnParser* = proc(
         calledBy: string, nodes: seq[BracketianNode]): BracketianNode {.nimcall.}
 
-    # IR :: intermidiate representation
     IRMap* = Table[string, BnParser]
 
     ParserStates = enum
