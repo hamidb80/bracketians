@@ -86,6 +86,54 @@ macro bfKindAssersion*(routine) =
 
     return routine
 
+
+macro infer(routine) =
+  ## proc job(a, b: bool, c: bool): bool =
+  ##    discard
+  ##
+  ## converts to =>
+  ##
+  ##  proc job(args: seq[bool): bool =
+  ##    assert args.len == 3
+  ##    let
+  ##      a = args[0]
+  ##      b = args[1]
+  ##      c = args[2]
+  ##    discard
+
+  let
+    rt = routine.RoutineReturnType
+    identArgs = block:
+      var res: seq[NimNode]
+
+      for identDef in routine.RoutineArguments:
+        res.add identDef[IdentDefNames]
+
+      res
+    argsI = "args".ident
+
+  routine[RoutineFormalParams] = newTree(nnkFormalParams,
+    rt, newIdentDefs(argsI, newtree(nnkBracketExpr, "seq".ident, rt)))
+
+  var acc = 0
+  template spin: untyped =
+    let res = acc
+    acc.inc
+    res
+
+  routine[RoutineBody].insert 0, newNimNode(nnkLetSection).add do:
+    identArgs.mapit newIdentDefs(it, newEmptyNode(), block:
+      let i = spin()
+      quote: `argsI`[`i`]
+    )
+
+  routine[RoutineBody].insert 0, quote do:
+    assert `argsI`.len == `acc`
+
+  # echo repr routine
+  return routine
+
+
 func toBNode*(i: int): BNode =
     BNode(kind: bnInt, intVal: i)
 

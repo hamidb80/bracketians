@@ -52,3 +52,4 @@ number 3213 12.221
 
 ## helpful links:
 * [lispy](https://norvig.com/lispy.html)
+* [inspiration](https://github.com/xigoi/xidoc)
