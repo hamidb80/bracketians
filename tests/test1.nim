@@ -1,4 +1,4 @@
 import std/[strutils]
 import bracketians
 
-echo parse(readFile "./play.nim").join "\n"
+echo parse(readFile "./examples/eg1.nim").join "\n"

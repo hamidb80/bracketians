@@ -1,0 +1,31 @@
+[info 
+  author "@hamidb80"
+  email "hr.bolouri@gmail.com"
+  copyright "MIT"
+]
+
+[def
+  age 12
+  name "hamid"
+]
+
+[ch 1 
+  [multi-lang [:
+
+    EN [&
+      "dad"
+    ]
+
+    FA [&
+      "متن 1"
+    ]
+  ]]
+
+  [ref myFormula [LatEx "2^2 + 2*4 - 1"]]
+]
+
+[ch 2
+  [addr myFormula]
+  [pic "./me.png"]
+  [include "./another-page.bm"]
+]
