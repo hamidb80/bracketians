@@ -1,1 +1,1 @@
-[echo "hey"]
+[echo [len "hey"]]

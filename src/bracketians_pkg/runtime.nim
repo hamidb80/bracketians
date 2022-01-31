@@ -19,14 +19,14 @@ type
         of bnList: data*: seq[BracketianNode]
         of bnTable: table*: Table[BracketianNode, BracketianNode]
 
-    BNode* = BracketianNode
-
     BracketianFn* =
         proc(args: seq[BracketianNode]): BracketianNode {.nimcall.}
 
+    BNode* = BracketianNode
+
     Symbol* = string
 
-    Layer* = TableRef[Symbol, BracketianNode]
+    Layer* = TableRef[Symbol, BNode]
     Stack* = seq[Layer]
 
     FnMap* = Table[Symbol, BracketianFn]
@@ -86,6 +86,7 @@ macro bfKindAssersion*(routine) =
 
     return routine
 
+# TODO pick a better name
 macro infer(routine) =
     ## proc job(a, b: bool, c: bool): bool =
     ##    discard
