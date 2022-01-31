@@ -26,7 +26,7 @@ type
 
     Symbol* = string
 
-    Layer* = Table[Symbol, BracketianNode]
+    Layer* = TableRef[Symbol, BracketianNode]
     Stack* = seq[Layer]
 
     FnMap* = Table[Symbol, BracketianFn]
@@ -169,7 +169,7 @@ let defaultFunctionMap*: FnMap = toTable {
 }
 
 # TODO add macroMap for if def cond ...
-proc eval*(tk: BToken, stack: Stack, fm: FnMap): BNode =
+proc eval*(tk: BToken, stack: var Stack, fm: FnMap): BNode =
     case tk.kind:
     of btNothing: BNode(kind: bnNothing)
     of btInt: toBNode(tk.intval)
