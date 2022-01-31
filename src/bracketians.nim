@@ -1,36 +1,24 @@
-import std/[strutils, sequtils, tables]
+import std/[strutils, tables]
 
 
 type
-    BracketianNodeKind* = enum
+    BracketianTokenKind* = enum
         bnNothing
         bnBool, bnInt, bnFloat, bnString
-        bnList, bnTable
         bnSymbol
-        bnCall
+        bnList
 
-    BracketianNode* = ref object
-        case kind: BracketianNodeKind
+    BracketianToken* = ref object
+        case kind: BracketianTokenKind
         of bnNothing: discard
         of bnInt: intVal*: int
         of bnFloat: floatVal*: float
         of bnString: strVal*: string
         of bnSymbol: symbol*: string
         of bnBool: boolVal*: bool
-        of bnList:
-            list*: seq[BracketianNode]
-        of bnTable:
-            table*: Table[BracketianNode, BracketianNode]
-        of bnCall:
-            fn*: string
-            args*: seq[BracketianNode]
+        of bnList: data*: seq[BracketianToken]
 
-
-    # IR :: intermidiate representation
-    BnParser* = proc(
-        calledBy: string, nodes: seq[BracketianNode]): BracketianNode {.nimcall.}
-
-    IRMap* = Table[string, BnParser]
+    BToken* = BracketianToken
 
     ParserStates = enum
         psInitial
@@ -39,7 +27,7 @@ type
         psSymbol
 
 
-func `$`(node: BracketianNode): string =
+func `$`(node: BToken): string =
     case node.kind:
     of bnNothing:
         "nil"
@@ -60,17 +48,10 @@ func `$`(node: BracketianNode): string =
         node.symbol
 
     of bnList:
-        '(' & node.list.join(" ") & ')'
-
-    of bnTable:
-        '{' & node.table.pairs.toseq.mapIt($it[0] & ':' & $it[1]).join(" ") & '}'
-
-    of bnCall:
-        '[' & node.fn & ' ' & node.args.join(" ") & ']'
+        '[' & node.data.join(" ") & ']'
 
 proc parse*(
-    s: ref string, pm: IRMap,
-    startI: int, acc: var seq[BracketianNode]
+    s: ref string, startI: int, acc: var seq[BToken]
 ): int =
     ## return the last index that was there
 
@@ -92,12 +73,12 @@ proc parse*(
         case state:
         of psString:
             if c == '"' and s[i-1] != '\\':
-                acc.add BracketianNode(kind: bnString, strVal: s[temp .. i-1])
+                acc.add BToken(kind: bnString, strVal: s[temp .. i-1])
                 reset()
 
         of psSymbol:
             if c in Whitespace or c == ']':
-                acc.add BracketianNode(kind: bnSymbol, symbol: s[temp .. i-1])
+                acc.add BToken(kind: bnSymbol, symbol: s[temp .. i-1])
 
                 reset()
                 checkDone()
@@ -108,9 +89,9 @@ proc parse*(
 
                 acc.add:
                     if '.' in t:
-                        BracketianNode(kind: bnFloat, floatVal: parseFloat t)
+                        BToken(kind: bnFloat, floatVal: parseFloat t)
                     else:
-                        BracketianNode(kind: bnInt, intval: parseInt t)
+                        BToken(kind: bnInt, intval: parseInt t)
 
             reset()
             checkDone()
@@ -118,11 +99,10 @@ proc parse*(
         of psInitial:
             case c:
             of '[':
-                var nodes: seq[BracketianNode]
-                i = parse(s, pm, i+1, nodes)
+                var nodes: seq[BToken]
+                i = parse(s, i+1, nodes)
 
-                acc.add BracketianNode(kind: bnCall, fn: nodes[0].symbol,
-                        args: nodes[1..^1])
+                acc.add BToken(kind: bnList, data: nodes)
 
             of ']':
                 done()
@@ -145,11 +125,12 @@ proc parse*(
         # echo (i, c)
         i.inc
 
-proc parse*(s: ref string, pm: IRMap): seq[BracketianNode] =
-    discard parse(s, pm, 0, result)
+proc parse*(s: ref string): seq[BToken] =
+    discard parse(s, 0, result)
 
-proc parse*(s: string, pm: IRMap): seq[BracketianNode] =
+proc parse*(s: string): seq[BToken] =
     let sref = new string
     sref[] = s
-    parse(sref, pm)
+    parse(sref)
 
+# proc eval*():
