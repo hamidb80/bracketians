@@ -12,4 +12,4 @@ bin           = @["bracketians"]
 # Dependencies
 
 requires "nim >= 1.6.2"
-requires "macroplus == 0.1.12"
+requires "macroplus == 0.1.15"

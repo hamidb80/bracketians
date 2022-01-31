@@ -57,7 +57,7 @@ func `$`*(n: BNode): string =
 
 # ----------------------------
 
-# TODO add kind assertion for return type 
+# TODO add kind assertion for return type
 macro bfKindAssersion*(routine) =
     ## func gt(x, y: BNode{bInt}, z: Bnode{bBool}): BNode{bBool} =
     ##   ...
@@ -86,52 +86,57 @@ macro bfKindAssersion*(routine) =
 
     return routine
 
-
 macro infer(routine) =
-  ## proc job(a, b: bool, c: bool): bool =
-  ##    discard
-  ##
-  ## converts to =>
-  ##
-  ##  proc job(args: seq[bool): bool =
-  ##    assert args.len == 3
-  ##    let
-  ##      a = args[0]
-  ##      b = args[1]
-  ##      c = args[2]
-  ##    discard
+    ## proc job(a, b: bool, c: bool): bool =
+    ##    discard
+    ##
+    ## converts to =>
+    ##
+    ##  proc job(args: seq[bool): bool =
+    ##    assert args.len == 3
+    ##    let
+    ##      a = args[0]
+    ##      b = args[1]
+    ##      c = args[2]
+    ##    discard
 
-  let
-    rt = routine.RoutineReturnType
-    identArgs = block:
-      var res: seq[NimNode]
+    var hasVarargs = false # TODO support varargs
+    let
+        rt = routine.RoutineReturnType
+        argsI = "args".ident
+        identArgs = block:
+            var res: seq[NimNode]
 
-      for identDef in routine.RoutineArguments:
-        res.add identDef[IdentDefNames]
+            for identDef in routine.RoutineArguments:
+                res.add identDef[IdentDefNames]
 
-      res
-    argsI = "args".ident
+                let idt = identDef[IdentDefType]
+                if idt.kind == nnkBracketExpr and idt.strVal == "varargs":
+                    hasVarargs = true
 
-  routine[RoutineFormalParams] = newTree(nnkFormalParams,
-    rt, newIdentDefs(argsI, newtree(nnkBracketExpr, "seq".ident, rt)))
+            res
 
-  var acc = 0
-  template spin: untyped =
-    let res = acc
-    acc.inc
-    res
 
-  routine[RoutineBody].insert 0, newNimNode(nnkLetSection).add do:
-    identArgs.mapit newIdentDefs(it, newEmptyNode(), block:
-      let i = spin()
-      quote: `argsI`[`i`]
-    )
+    routine[RoutineFormalParams] = newTree(nnkFormalParams,
+        rt, newIdentDefs(argsI, inlineQuote seq[`rt`]))
 
-  routine[RoutineBody].insert 0, quote do:
-    assert `argsI`.len == `acc`
+    var acc = 0
+    template spin: untyped =
+        let res = acc
+        acc.inc
+        res
 
-  # echo repr routine
-  return routine
+    routine[RoutineBody].insert 0, newNimNode(nnkLetSection).add do:
+        identArgs.mapit newIdentDefs(it, newEmptyNode(), block:
+            let i = spin()
+            inlineQuote `argsI`[`i`]
+        )
+
+    routine[RoutineBody].insert 0, quote do:
+        assert `argsI`.len == `acc`
+
+    # echo repr routine
+    return routine
 
 
 func toBNode*(i: int): BNode =
@@ -149,10 +154,10 @@ func toBNode*(b: bool): BNode =
 func newBNothing*(): BNode =
     BNode(kind: bnNothing)
 
-func bLen(s: BNode{bnString}): BNode{bnInt} {.bfKindAssersion.} =
+func bLen(s: BNode{bnString}): BNode{bnInt} {.bfKindAssersion, infer.} =
     toBNode s.strVal.len
 
-proc bEcho(bn: BNode): BNode =
+proc bEcho(bn: BNode): BNode {.infer.} =
     {.cast(nosideEffect).}:
         echo bn
 
