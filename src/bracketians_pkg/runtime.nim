@@ -6,8 +6,9 @@ import parser
 type
     BracketianNodeKinds = enum
         bnNothing, bnBool, bnInt, bnFloat, bnString
-        bnList, bnTable,
-        # TODO bnLambda
+        bnList, bnTable, bnLambda
+
+    Symbol* = string
 
     BracketianNode* = ref object
         case kind*: BracketianNodeKinds:
@@ -18,21 +19,24 @@ type
         of bnString: strVal*: string
         of bnList: data*: seq[BracketianNode]
         of bnTable: table*: Table[BracketianNode, BracketianNode]
+        of bnLambda:
+            args: seq[Symbol]
+            instructions: seq[BracketianToken]
 
     BracketianFn* =
         proc(args: seq[BracketianNode]): BracketianNode {.nimcall.}
 
-    BracketianMacro* =
-        proc(args: seq[BracketianToken]): BracketianNode {.nimcall.}
-
     BNode* = BracketianNode
 
-    Symbol* = string
 
     Layer* = TableRef[Symbol, BNode]
     Stack* = seq[Layer]
 
     FnMap* = Table[Symbol, BracketianFn]
+
+    BracketianMacro* =
+        proc(args: seq[BracketianToken]): BracketianToken {.nimcall.}
+
     MacroMap* = Table[Symbol, BracketianMacro]
 
 
@@ -59,6 +63,9 @@ func `$`*(n: BNode): string =
     of bnTable:
         '{' & n.table.pairs.toseq.mapIt(fmt"{it[0]}: {it[1]}").join(" ") & '}'
 
+    of bnLambda:
+        "[defn [" & n.args.join(" ") & "] " & n.instructions.join(" ") & " ]"
+
 func toBNode*(i: int): BNode =
     BNode(kind: bnInt, intVal: i)
 
@@ -73,6 +80,10 @@ func toBNode*(b: bool): BNode =
 
 func newBNothing*(): BNode =
     BNode(kind: bnNothing)
+
+func isTrue*(n: BNode): bool =
+    assert n.kind == bnBool
+    n.boolVal
 
 # ----------------------------
 
@@ -105,17 +116,17 @@ macro bfKindAssersion*(routine) =
 
     return routine
 
-macro infer(routine) =
+macro infer*(routine) =
     ## + implicit return
     ## + varargs support
     ##
-    ## proc job(a, b: bool, c: varargs[bool]) =
+    ## proc job(a, b: BNode, c: varargs[BNode]) =
     ##    discard
     ##
     ## converts to =>
     ##
-    ##  proc job(args: seq[bool): bool =
-    ##    result = bool(...)
+    ##  proc job(args: seq[BNode): BNode =
+    ##    result = newBNothing()
     ##    assert args.len == 3, ""
     ##    let
     ##      a = args[0]
@@ -181,6 +192,7 @@ macro infer(routine) =
     # echo repr routine
     return routine
 
+# --------------------------
 
 func bLen(s: BNode{bnString}): BNode{bnInt} {.bfKindAssersion, infer.} =
     toBNode s.strVal.len
@@ -191,13 +203,30 @@ proc bEcho(bn: BNode): BNode {.infer.} =
 
     newBNothing()
 
+func bCond(bns: varargs[BNode]): BNode {.infer.} =
+    assert bns.len mod 2 == 0
+
+    for i in countup(0,  bns.high, 2):
+        if bns[i].isTrue:
+            return bns[i+1]
+
+    newBNothing()
+
+func ifStmt(args: seq[BracketianToken]): BracketianToken =
+    BracketianToken(kind: btNothing)
+
 let
     defaultFunctionMap*: FnMap = toTable {
         "len": bLen,
-        "echo": bEcho
+        "echo": bEcho,
+        "cond": bCond
     }
 
-    defaultMacroMap*: MacroMap = MacroMap()
+    defaultMacroMap*: MacroMap = toTable {
+        "if": ifStmt
+    }
+
+# --------------------------
 
 proc eval*(tk: BToken, stack: var Stack, fm: FnMap, mm: MacroMap): BNode =
     case tk.kind:
@@ -216,9 +245,19 @@ proc eval*(tk: BToken, stack: var Stack, fm: FnMap, mm: MacroMap): BNode =
 
     of btList:
         doAssert tk.data.len != 0, "a list cannot have 0 elements"
-        doAssert tk.data[0].kind == btSymbol
+        doAssert tk.data[0].kind == btSymbol, "the first argument of a list must be a symbol"
 
-        fm[tk.data[0].symbol](tk.data[1..^1].mapIt eval(it, stack, fm, mm))
+        let callName = tk.data[0].symbol
+
+        if callName in mm:
+            eval(mm[callName](tk.data[1..^1]), stack, fm, mm)
+
+        elif callName in fm:
+            fm[callName](tk.data[1..^1].mapIt eval(it, stack, fm, mm))
+
+        else:
+            raise newException(ValueError,
+                    "no such macro or function found with name: " & callName)
 
 proc eval*(tk: BToken, fm: FnMap, mm: MacroMap): BNode =
     var s: Stack

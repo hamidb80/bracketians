@@ -77,7 +77,14 @@ proc parse*(
 
         of psSymbol:
             if c in Whitespace or c == ']':
-                acc.add BToken(kind: btSymbol, symbol: s[temp .. i-1])
+                let t = s[temp .. i-1]
+                
+                acc.add:
+                    if t in ["true", "false"]:
+                        BToken(kind: btBool, boolVal: parseBool t)
+                    else:
+                        BToken(kind: btSymbol, symbol: t)
+
 
                 reset()
                 checkDone()
