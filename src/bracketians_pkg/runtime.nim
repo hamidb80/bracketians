@@ -88,6 +88,10 @@ func isTrue*(n: BNode): bool =
     assert n.kind == bnBool
     n.boolVal
 
+func getSymbol*(tk: BToken): string =
+    assert tk.kind == btSymbol
+    tk.symbol
+
 # ----------------------------
 
 # TODO add kind assertion for return type
@@ -229,6 +233,8 @@ func defLambda(nodes: seq[BToken]): BNode =
         args: argsList.data.mapIt(it.symbol),
         instructions: body)
 
+# --------------------------
+
 func bToList(bns: varargs[BNode]): BNode {.infer.} =
     result = newBList()
     result.data.add bns
@@ -273,6 +279,7 @@ let
     }
 
 # --------------------------
+
 proc repl*(tks: seq[BToken], stack: var Stack, fm: FnMap, mm: MacroMap): BNode
 
 proc eval*(tk: BToken, stack: var Stack, fm: FnMap, mm: MacroMap): BNode =
@@ -295,7 +302,7 @@ proc eval*(tk: BToken, stack: var Stack, fm: FnMap, mm: MacroMap): BNode =
 
     of btCall:
         case tk.caller:
-        of "def":
+        of "def", ":=":
             assert tk.args[0].kind == btSymbol, "the declaration label must be a symbol"
             assert tk.args.len == 2, "def expects 2 arguments, label and value"
 
@@ -305,6 +312,19 @@ proc eval*(tk: BToken, stack: var Stack, fm: FnMap, mm: MacroMap): BNode =
 
         of "lambda", "fn":
             defLambda(tk.args)
+
+        of "set", "=":
+            let
+                variable = getSymbol(tk.args[0])
+                value = eval(tk.args[1], stack, fm, mm)
+
+            for i in countdown(stack.high, 0):
+                if variable in stack[i]:
+                    stack[i][variable] = value
+                    return
+
+            raise newException(ValueError,
+                    fmt"the symbol '{variable}' is not defined")
 
         of "call": # lambda call
             let

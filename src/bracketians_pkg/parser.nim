@@ -56,9 +56,8 @@ func `$`*(tk: BToken): string =
         '[' & tk.caller & ' ' & tk.args.join(" ") & ']'
 
 
-proc parse*(
-    s: ref string, startI: int, acc: var seq[BToken]
-): int =
+proc parse*(s: ref string,
+            startI: int, acc: var seq[BToken]): int =
     ## return the last index that was there
 
     const rrr = {']', ')'}
@@ -93,7 +92,6 @@ proc parse*(
                     else:
                         BToken(kind: btSymbol, symbol: t)
 
-
                 reset()
                 checkDone()
 
@@ -121,7 +119,8 @@ proc parse*(
                         BToken(kind: btList, data: nodes)
                     else:
                         assert nodes.len >= 1, "a call must have at least on element"
-                        assert nodes[0].kind == btSymbol, "caller must be a symbol"
+                        assert nodes[0].kind == btSymbol,
+                                "caller must be a symbol but it's " & $nodes[0].kind
 
                         BToken(kind: btCall, caller: nodes[0].symbol,
                                 args: nodes[1 .. ^1])

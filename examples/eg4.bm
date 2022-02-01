@@ -1,13 +1,18 @@
 [def y 3]
+[set y 22]
 
-[call [fn (x) [+ x y]] (12)]
+[def inc [fn (n) [+ n 1]]]
+
+[echo [call [fn (x) [+ x y]] (12)]]
 
 [echo [+ 1 2 3 4]]
 
-[join ", "
+[echo [join ", "
   "Hello"
   "my"
   "name"
   "is"
   "hamid"
-]
+]]
+
+[call inc (2)]
