@@ -6,7 +6,7 @@ type
         btNothing
         btBool, btInt, btFloat, btString
         btSymbol
-        btList
+        btCall, btList
 
     BracketianToken* = ref object
         case kind*: BracketianTokenKinds
@@ -17,6 +17,9 @@ type
         of btSymbol: symbol*: string
         of btBool: boolVal*: bool
         of btList: data*: seq[BracketianToken]
+        of btCall:
+            caller*: string
+            args*: seq[BracketianToken]
 
     BToken* = BracketianToken
 
@@ -47,12 +50,18 @@ func `$`*(tk: BToken): string =
         tk.symbol
 
     of btList:
-        '[' & tk.data.join(" ") & ']'
+        '(' & tk.data.join(" ") & ')'
+
+    of btCall:
+        '[' & tk.caller & ' ' & tk.args.join(" ") & ']'
+
 
 proc parse*(
     s: ref string, startI: int, acc: var seq[BToken]
 ): int =
     ## return the last index that was there
+
+    const rrr = {']', ')'}
 
     var
         state: ParserStates = psInitial
@@ -62,12 +71,11 @@ proc parse*(
     template reset: untyped = state = psInitial
     template done: untyped = return i
     template checkDone: untyped =
-        if c == ']':
+        if c in rrr:
             return i
 
     while i < s[].len:
         let c = s[i]
-        # echo state
 
         case state:
         of psString:
@@ -76,9 +84,9 @@ proc parse*(
                 reset()
 
         of psSymbol:
-            if c in Whitespace or c == ']':
+            if c in Whitespace or c in rrr:
                 let t = s[temp .. i-1]
-                
+
                 acc.add:
                     if t in ["true", "false"]:
                         BToken(kind: btBool, boolVal: parseBool t)
@@ -90,7 +98,7 @@ proc parse*(
                 checkDone()
 
         of psNumber:
-            if c in Whitespace or c == ']':
+            if c in Whitespace or c in rrr:
                 let t = s[temp .. i-1]
 
                 acc.add:
@@ -104,13 +112,21 @@ proc parse*(
 
         of psInitial:
             case c:
-            of '[':
+            of '[', '(':
                 var nodes: seq[BToken]
                 i = parse(s, i+1, nodes)
 
-                acc.add BToken(kind: btList, data: nodes)
+                acc.add:
+                    if c == '(':
+                        BToken(kind: btList, data: nodes)
+                    else:
+                        assert nodes.len >= 1, "a call must have at least on element"
+                        assert nodes[0].kind == btSymbol, "caller must be a symbol"
 
-            of ']':
+                        BToken(kind: btCall, caller: nodes[0].symbol,
+                                args: nodes[1 .. ^1])
+
+            of ']', ')':
                 done()
 
             of Whitespace:
@@ -128,7 +144,6 @@ proc parse*(
                 state = psSymbol
                 temp = i
 
-        # echo (i, c)
         i.inc
 
 proc parse*(s: string): seq[BToken] =

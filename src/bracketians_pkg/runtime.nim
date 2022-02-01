@@ -58,7 +58,7 @@ func `$`*(n: BNode): string =
         n.strVal
 
     of bnList:
-        substr $n.data, 1
+        '(' & n.data.join(" ") & ')'
 
     of bnTable:
         '{' & n.table.pairs.toseq.mapIt(fmt"{it[0]}: {it[1]}").join(" ") & '}'
@@ -234,14 +234,23 @@ func bToList(bns: varargs[BNode]): BNode {.infer.} =
     result = newBList()
     result.data.add bns
 
-func bAdd(a, b: BNode): BNode {.infer.} =
-    assert a.kind == b.kind
+func bAdd(numbers: varargs[BNode]): BNode {.infer.} =
+    let kinds = numbers.mapIt(it.kind).deduplicate
+    assert kinds.len == 1 and kinds[0] in {bnInt, bnFloat}
 
-    case a.kind:
-    of bnInt: toBNode(a.intVal + b.intVal)
-    of bnFloat: toBNode(a.floatVal + b.floatVal)
+    var res = (0, 0.0)
+
+    for n in numbers:
+        case n.kind:
+        of bnInt: res[0].inc n.intVal
+        of bnFloat: res[1] += n.floatVal
+        else: discard
+
+    if kinds[0] == bnInt:
+        toBnode res[0]
     else:
-        raise newException(ValueError, "not a number")
+        toBNode res[1]
+    
 
 func ifStmt(args: seq[BToken]): BToken =
     BToken(kind: btNothing)
@@ -278,24 +287,18 @@ proc eval*(tk: BToken, stack: var Stack, fm: FnMap, mm: MacroMap): BNode =
         raise newException(ValueError, fmt"the symbol '{tk.symbol}' is not defined")
 
     of btList:
-        doAssert tk.data.len != 0, "a list cannot have 0 elements"
-        doAssert tk.data[0].kind == btSymbol, "the first argument of a list must be a symbol"
+        BNode(kind: bnList, data: tk.data.mapIt eval(it, stack, fm, mm))
 
-        let
-            callName = tk.data[0].symbol
-            args = tk.data[1..^1]
-
-        case callName:
+    of btCall:
+        case tk.caller:
         of "lambda", "fn":
-            defLambda(args)
+            defLambda(tk.args)
 
         of "call", "()": # lambda call
-            assert args.len >= 1
-
             let
-                fn = eval(args[0], stack, fm, mm)
+                fn = eval(tk.args[0], stack, fm, mm)
                 params =
-                    if args.len == 2: eval(args[1], stack, fm, mm)
+                    if tk.args.len == 2: eval(tk.args[1], stack, fm, mm)
                     else: newBList()
 
                 newStackLayer = block:
@@ -316,24 +319,21 @@ proc eval*(tk: BToken, stack: var Stack, fm: FnMap, mm: MacroMap): BNode =
 
             res
 
-        elif callName in mm:
-            eval(mm[callName](args), stack, fm, mm)
+        elif tk.caller in mm:
+            eval(mm[tk.caller](tk.args), stack, fm, mm)
 
-        elif callName in fm:
-            fm[callName](args.mapIt eval(it, stack, fm, mm))
+        elif tk.caller in fm:
+            fm[tk.caller](tk.args.mapIt eval(it, stack, fm, mm))
 
         else:
             raise newException(ValueError,
-                    "no such macro or function found with name: " & callName)
+                    "no such macro or function found with name: " & tk.caller)
 
 proc repl*(tks: seq[BToken], stack: var Stack, fm: FnMap, mm: MacroMap): BNode =
     for tk in tks:
         result = eval(tk, stack, fm, mm)
 
-proc eval*(tk: BToken, fm: FnMap, mm: MacroMap): BNode =
+proc repl*(tks: seq[BToken]): BNode =
     var s: Stack
     s.add Layer()
-    eval(tk, s, fm, mm)
-
-proc eval*(tk: BToken): BNode =
-    eval(tk, defaultFunctionMap, defaultMacroMap)
+    repl(tks, s, defaultFunctionMap, defaultMacroMap)
