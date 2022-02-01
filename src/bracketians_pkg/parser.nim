@@ -107,8 +107,8 @@ proc parse*(
                     else:
                         BToken(kind: btInt, intval: parseInt t)
 
-            reset()
-            checkDone()
+                reset()
+                checkDone()
 
         of psInitial:
             case c:

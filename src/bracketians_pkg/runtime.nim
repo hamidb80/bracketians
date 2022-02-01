@@ -55,7 +55,7 @@ func `$`*(n: BNode): string =
         $n.floatVal
 
     of bnString:
-        n.strVal
+        '"' & n.strVal & '"'
 
     of bnList:
         '(' & n.data.join(" ") & ')'
@@ -222,9 +222,8 @@ func defLambda(nodes: seq[BToken]): BNode =
         argsList = nodes[0]
         body = nodes[1..^1]
 
-    assert:
-        argsList.kind == btList and
-        argsList.data.allit(it.kind == btSymbol)
+    assert argsList.kind == btList
+    assert argsList.data.allit(it.kind == btSymbol)
 
     BNode(kind: bnLambda,
         args: argsList.data.mapIt(it.symbol),
@@ -250,7 +249,11 @@ func bAdd(numbers: varargs[BNode]): BNode {.infer.} =
         toBnode res[0]
     else:
         toBNode res[1]
-    
+
+func bJoinStr(infix: BNode{bnString},
+                strs: varargs[BNode]): BNode{bnString} {.bfKindAssersion, infer.} =
+
+    toBNode strs.mapIt(it.strVal).join infix.strVal
 
 func ifStmt(args: seq[BToken]): BToken =
     BToken(kind: btNothing)
@@ -262,6 +265,7 @@ let
         "cond": bCond,
         "!": bToList,
         "+": bAdd,
+        "join": bJoinStr,
     }
 
     defaultMacroMap*: MacroMap = toTable {
@@ -291,10 +295,18 @@ proc eval*(tk: BToken, stack: var Stack, fm: FnMap, mm: MacroMap): BNode =
 
     of btCall:
         case tk.caller:
+        of "def":
+            assert tk.args[0].kind == btSymbol, "the declaration label must be a symbol"
+            assert tk.args.len == 2, "def expects 2 arguments, label and value"
+
+            let value = eval(tk.args[1], stack, fm, mm)
+            stack[^1][tk.args[0].symbol] = value
+            value
+
         of "lambda", "fn":
             defLambda(tk.args)
 
-        of "call", "()": # lambda call
+        of "call": # lambda call
             let
                 fn = eval(tk.args[0], stack, fm, mm)
                 params =

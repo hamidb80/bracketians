@@ -1,0 +1,13 @@
+[def y 3]
+
+[call [fn (x) [+ x y]] (12)]
+
+[echo [+ 1 2 3 4]]
+
+[join ", "
+  "Hello"
+  "my"
+  "name"
+  "is"
+  "hamid"
+]
