@@ -261,8 +261,41 @@ func bJoinStr(infix: BNode{bnString},
 
     toBNode strs.mapIt(it.strVal).join infix.strVal
 
-func ifStmt(args: seq[BToken]): BToken =
-    BToken(kind: btNothing)
+func bEq(a, b: BNode): BNode{bnBool} {.bfKindAssersion, infer.} =
+    assert a.kind == b.kind
+
+    toBNode:
+        case a.kind:
+        of bnInt: a.intVal == b.intVal
+        of bnFloat: a.floatVal == b.floatVal
+        else: raise newException(ValueError, "not a number")
+
+func bLt(a, b: BNode): BNode{bnBool} {.bfKindAssersion, infer.} =
+    assert a.kind == b.kind
+
+    toBNode:
+        case a.kind:
+        of bnInt: a.intVal < b.intVal
+        of bnFloat: a.floatVal < b.floatVal
+        else: raise newException(ValueError, "not a number")
+
+func bGt(a, b: BNode): BNode{bnBool} {.bfKindAssersion, infer.} =
+    assert a.kind == b.kind
+
+    toBNode:
+        case a.kind:
+        of bnInt: a.intVal > b.intVal
+        of bnFloat: a.floatVal > b.floatVal
+        else: raise newException(ValueError, "not a number")
+
+func bGte(a, b: BNode): BNode{bnBool} {.bfKindAssersion, infer.} =
+    toBNode not bLt(@[a, b]).isTrue
+
+func bLte(a, b: BNode): BNode{bnBool} {.bfKindAssersion, infer.} =
+    toBNode not bGt(@[a, b]).isTrue
+
+func bNot(a: BNode{bnBool}): BNode{bnBool} {.bfKindAssersion, infer.} =
+    toBNode not a.isTrue
 
 let
     defaultFunctionMap*: FnMap = toTable {
@@ -272,11 +305,15 @@ let
         "!": bToList,
         "+": bAdd,
         "join": bJoinStr,
+        "<": bLt,
+        "<=": bLte,
+        "==": bEq,
+        ">": bGt,
+        ">=": bGte,
+        "not": bNot,
     }
 
-    defaultMacroMap*: MacroMap = toTable {
-        "if": ifStmt
-    }
+    defaultMacroMap* = MacroMap()
 
 # --------------------------
 
@@ -350,6 +387,16 @@ proc eval*(tk: BToken, stack: var Stack, fm: FnMap, mm: MacroMap): BNode =
             stack.del stack.high
 
             res
+
+        of "if":
+            assert tk.args.len >= 2, "if statement expects at least 2 arguments but given: " & $tk.args.len
+
+            if tk.args[0].eval(stack, fm, mm).isTrue:
+                tk.args[1].eval(stack, fm, mm)
+            elif tk.args.len == 3:
+                tk.args[2].eval(stack, fm, mm)
+            else:
+                newBNothing()
 
         elif tk.caller in mm:
             eval(mm[tk.caller](tk.args), stack, fm, mm)
