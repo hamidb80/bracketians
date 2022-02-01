@@ -210,15 +210,6 @@ proc bEcho(bn: BNode): BNode {.infer.} =
 
     newBNothing()
 
-func bCond(bns: varargs[BNode]): BNode {.infer.} =
-    assert bns.len mod 2 == 0
-
-    for i in countup(0, bns.high, 2):
-        if bns[i].isTrue:
-            return bns[i+1]
-
-    newBNothing()
-
 func defLambda(nodes: seq[BToken]): BNode =
     assert nodes.len >= 2
 
@@ -234,10 +225,6 @@ func defLambda(nodes: seq[BToken]): BNode =
         instructions: body)
 
 # --------------------------
-
-func bToList(bns: varargs[BNode]): BNode {.infer.} =
-    result = newBList()
-    result.data.add bns
 
 func bAdd(numbers: varargs[BNode]): BNode {.infer.} =
     let kinds = numbers.mapIt(it.kind).deduplicate
@@ -297,22 +284,30 @@ func bLte(a, b: BNode): BNode{bnBool} {.bfKindAssersion, infer.} =
 func bNot(a: BNode{bnBool}): BNode{bnBool} {.bfKindAssersion, infer.} =
     toBNode not a.isTrue
 
+func bToTable(args: varargs[BNode]): BNode{bnTable} {.bfKindAssersion, infer.} =
+    result = BNode(kind: bnTable)
+
+    for i in countup(0, args.high, 2):
+        result.table[args[i]] = args[i+1]
+
 let
     defaultFunctionMap*: FnMap = toTable {
         "len": bLen,
         "echo": bEcho,
-        "cond": bCond,
-        "!": bToList,
-        "+": bAdd,
         "join": bJoinStr,
+
+        "not": bNot,
+
+        "+": bAdd,
+
         "<": bLt,
         "<=": bLte,
         "==": bEq,
-        ">": bGt,
         ">=": bGte,
-        "not": bNot,
-    }
+        ">": bGt,
 
+        ":": bToTable,
+    }
     defaultMacroMap* = MacroMap()
 
 # --------------------------
