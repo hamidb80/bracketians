@@ -22,6 +22,9 @@ type
     BracketianFn* =
         proc(args: seq[BracketianNode]): BracketianNode {.nimcall.}
 
+    BracketianMacro* =
+        proc(args: seq[BracketianToken]): BracketianNode {.nimcall.}
+
     BNode* = BracketianNode
 
     Symbol* = string
@@ -30,6 +33,7 @@ type
     Stack* = seq[Layer]
 
     FnMap* = Table[Symbol, BracketianFn]
+    MacroMap* = Table[Symbol, BracketianMacro]
 
 
 func `$`*(n: BNode): string =
@@ -54,6 +58,21 @@ func `$`*(n: BNode): string =
 
     of bnTable:
         '{' & n.table.pairs.toseq.mapIt(fmt"{it[0]}: {it[1]}").join(" ") & '}'
+
+func toBNode*(i: int): BNode =
+    BNode(kind: bnInt, intVal: i)
+
+func toBNode*(f: float): BNode =
+    BNode(kind: bnFloat, floatVal: f)
+
+func toBNode*(s: string): BNode =
+    BNode(kind: bnString, strVal: s)
+
+func toBNode*(b: bool): BNode =
+    BNode(kind: bnBool, boolVal: b)
+
+func newBNothing*(): BNode =
+    BNode(kind: bnNothing)
 
 # ----------------------------
 
@@ -86,25 +105,38 @@ macro bfKindAssersion*(routine) =
 
     return routine
 
-# TODO pick a better name
 macro infer(routine) =
-    ## proc job(a, b: bool, c: bool): bool =
+    ## + implicit return
+    ## + varargs support
+    ##
+    ## proc job(a, b: bool, c: varargs[bool]) =
     ##    discard
     ##
     ## converts to =>
     ##
     ##  proc job(args: seq[bool): bool =
-    ##    assert args.len == 3
+    ##    result = bool(...)
+    ##    assert args.len == 3, ""
     ##    let
     ##      a = args[0]
     ##      b = args[1]
-    ##      c = args[2]
+    ##      c = args[2 .. ^1]
     ##    discard
 
-    var hasVarargs = false # TODO support varargs
+    var
+        hasReturn, hasVarargs = false
+        defines = newNimNode(nnkLetSection)
+
     let
-        rt = routine.RoutineReturnType
         argsI = "args".ident
+
+        rt = # return type
+            if routine.RoutineReturnType.kind == nnkEmpty:
+                inlineQuote `BNode`
+            else:
+                hasReturn = true
+                routine.RoutineReturnType
+
         identArgs = block:
             var res: seq[NimNode]
 
@@ -112,48 +144,43 @@ macro infer(routine) =
                 res.add identDef[IdentDefNames]
 
                 let idt = identDef[IdentDefType]
-                if idt.kind == nnkBracketExpr and idt.strVal == "varargs":
+                if idt.kind == nnkBracketExpr and idt[0].strVal == "varargs":
                     hasVarargs = true
 
             res
+
+        argslen = identArgs.len
 
 
     routine[RoutineFormalParams] = newTree(nnkFormalParams,
         rt, newIdentDefs(argsI, inlineQuote seq[`rt`]))
 
-    var acc = 0
-    template spin: untyped =
-        let res = acc
-        acc.inc
-        res
-
-    routine[RoutineBody].insert 0, newNimNode(nnkLetSection).add do:
-        identArgs.mapit newIdentDefs(it, newEmptyNode(), block:
-            let i = spin()
-            inlineQuote `argsI`[`i`]
+    for i, ia in identArgs:
+        defines.add newIdentDefs(ia, newEmptyNode(),
+            if i == identArgs.high and hasVarargs:
+                inlineQuote `argsI`[`i` .. ^1]
+            else:
+                inlineQuote `argsI`[`i`]
         )
 
-    routine[RoutineBody].insert 0, quote do:
-        assert `argsI`.len == `acc`
+    routine[RoutineBody].insert 0, defines
+    routine[RoutineBody].insert 0:
+        if hasVarargs:
+            inlineQuote assert(`argsI`.len >= (`argslen` - 1),
+              "expected at least" & $(`argslen` - 1) & " but given " &
+                      $`argsI`.len & " arguments")
+        else:
+            inlineQuote assert(`argsI`.len == `argslen`,
+              "expected " & $`argslen` & " but given " & $`argsI`.len & " arguments")
+
+    # implicit return type
+    if not hasReturn:
+        routine[RoutineBody].insert 0, quote do:
+            result = `newBNothing`()
 
     # echo repr routine
     return routine
 
-
-func toBNode*(i: int): BNode =
-    BNode(kind: bnInt, intVal: i)
-
-func toBNode*(f: float): BNode =
-    BNode(kind: bnFloat, floatVal: f)
-
-func toBNode*(s: string): BNode =
-    BNode(kind: bnString, strVal: s)
-
-func toBNode*(b: bool): BNode =
-    BNode(kind: bnBool, boolVal: b)
-
-func newBNothing*(): BNode =
-    BNode(kind: bnNothing)
 
 func bLen(s: BNode{bnString}): BNode{bnInt} {.bfKindAssersion, infer.} =
     toBNode s.strVal.len
@@ -164,13 +191,15 @@ proc bEcho(bn: BNode): BNode {.infer.} =
 
     newBNothing()
 
-let defaultFunctionMap*: FnMap = toTable {
-    "len": bLen,
-    "echo": bEcho
-}
+let
+    defaultFunctionMap*: FnMap = toTable {
+        "len": bLen,
+        "echo": bEcho
+    }
 
-# TODO add macroMap for if def cond ...
-proc eval*(tk: BToken, stack: var Stack, fm: FnMap): BNode =
+    defaultMacroMap*: MacroMap = MacroMap()
+
+proc eval*(tk: BToken, stack: var Stack, fm: FnMap, mm: MacroMap): BNode =
     case tk.kind:
     of btNothing: BNode(kind: bnNothing)
     of btInt: toBNode(tk.intval)
@@ -189,4 +218,9 @@ proc eval*(tk: BToken, stack: var Stack, fm: FnMap): BNode =
         doAssert tk.data.len != 0, "a list cannot have 0 elements"
         doAssert tk.data[0].kind == btSymbol
 
-        fm[tk.data[0].symbol](tk.data[1..^1].mapIt eval(it, stack, fm))
+        fm[tk.data[0].symbol](tk.data[1..^1].mapIt eval(it, stack, fm, mm))
+
+proc eval*(tk: BToken, fm: FnMap, mm: MacroMap): BNode =
+    var s: Stack
+    s.add Layer()
+    eval(tk, s, fm, mm)
