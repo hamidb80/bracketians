@@ -5,7 +5,7 @@ import parser
 
 type
     BracketianNodeKinds* = enum
-        bnNothing, 
+        bnNothing,
         bnNil, bnBool, bnInt, bnFloat, bnString
         bnList, bnTable, bnLambda
 
@@ -36,7 +36,7 @@ type
     FnMap* = Table[Symbol, BracketianFn]
 
     BracketianMacro* =
-        proc(args: seq[BToken]): BToken {.nimcall.}
+        proc(args: seq[BToken]): seq[BToken] {.nimcall.}
 
     MacroMap* = Table[Symbol, BracketianMacro]
 
@@ -138,7 +138,6 @@ func reprImpl*(n: BNode, acc: var seq[SerializedToken]) =
                 acc.add (stSpace, " ")
 
         acc.add (stNotation, "}")
-
 
     of bnLambda:
         acc.add (stNotation, "[")
@@ -378,6 +377,13 @@ func bToTable(args: varargs[BNode]): BNode{bnTable} {.bfKindAssersion, infer.} =
 func bToList(args: varargs[BNode]): BNode{bnList} {.bfKindAssersion, infer.} =
     newBList(args)
 
+proc mInclude(args: seq[BToken]): seq[BToken] =
+    assert args.len == 0
+    let path = args[0]
+    assert path.kind == btString
+
+    parse readfile path.strval
+
 let
     defaultFunctionMap*: FnMap = toTable {
         "len": bLen,
@@ -398,7 +404,9 @@ let
         ":": bToTable,
         "!": bToList,
     }
-    defaultMacroMap* = MacroMap()
+    defaultMacroMap*: MacroMap = toTable {
+        "include": mInclude
+    }
 
 # --------------------------
 
@@ -484,7 +492,12 @@ proc eval*(tk: BToken, stack: var Stack, fm: FnMap, mm: MacroMap): BNode =
                 newBNothing()
 
         elif tk.caller in mm:
-            eval(mm[tk.caller](tk.args), stack, fm, mm)
+            var last: BNode
+
+            for n in mm[tk.caller](tk.args):
+                last = eval(n, stack, fm, mm)
+
+            last
 
         elif tk.caller in fm:
             fm[tk.caller](tk.args.mapIt eval(it, stack, fm, mm))

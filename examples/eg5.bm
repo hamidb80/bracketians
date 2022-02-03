@@ -1,12 +1,3 @@
-[ch "101"
-  (1 2 3 4 5)
-]
-
-[ch "not mine"
-  1.78
-]
-
-
 [ch "where is my nim code?"
   [b "my name"]
 
@@ -16,3 +7,13 @@
 
 (1 2 "hey" false 5.9)
 [: "name" nil  "age" 17]
+
+[ch "final"
+  [ref "myName"
+    "::this is it::"
+  ]
+
+  [addr "myName"
+    ".ref to."
+  ]
+]
