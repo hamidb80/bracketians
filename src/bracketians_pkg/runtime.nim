@@ -1,10 +1,10 @@
-import std/[tables, sequtils, strformat, strutils, macros]
+import std/[tables, sequtils, strformat, strutils, macros, hashes]
 import macroplus
 import parser
 
 
 type
-    BracketianNodeKinds = enum
+    BracketianNodeKinds* = enum
         bnNothing, bnBool, bnInt, bnFloat, bnString
         bnList, bnTable, bnLambda
 
@@ -81,8 +81,8 @@ func toBNode*(b: bool): BNode =
 func newBNothing*(): BNode =
     BNode(kind: bnNothing)
 
-func newBList*(): BNode =
-    BNode(kind: bnList)
+func newBList*(nodes: seq[BNode] = @[]): BNode =
+    BNode(kind: bnList, data: nodes)
 
 func isTrue*(n: BNode): bool =
     assert n.kind == bnBool
@@ -91,6 +91,9 @@ func isTrue*(n: BNode): bool =
 func getSymbol*(tk: BToken): string =
     assert tk.kind == btSymbol
     tk.symbol
+
+func hash*(n: BNode): Hash =
+    hash $n
 
 # ----------------------------
 
@@ -290,6 +293,9 @@ func bToTable(args: varargs[BNode]): BNode{bnTable} {.bfKindAssersion, infer.} =
     for i in countup(0, args.high, 2):
         result.table[args[i]] = args[i+1]
 
+func bToList(args: varargs[BNode]): BNode{bnList} {.bfKindAssersion, infer.} =
+    newBList(args)
+
 let
     defaultFunctionMap*: FnMap = toTable {
         "len": bLen,
@@ -307,6 +313,7 @@ let
         ">": bGt,
 
         ":": bToTable,
+        "!": bToList,
     }
     defaultMacroMap* = MacroMap()
 
@@ -407,7 +414,9 @@ proc repl*(tks: seq[BToken], stack: var Stack, fm: FnMap, mm: MacroMap): BNode =
     for tk in tks:
         result = eval(tk, stack, fm, mm)
 
-proc repl*(tks: seq[BToken]): BNode =
+proc repl*(tks: seq[BToken],
+    fm = defaultFunctionMap, mm = defaultMacroMap): BNode =
+
     var s: Stack
     s.add Layer()
-    repl(tks, s, defaultFunctionMap, defaultMacroMap)
+    repl(tks, s, fm, mm)
