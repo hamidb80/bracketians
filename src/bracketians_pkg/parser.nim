@@ -3,14 +3,13 @@ import std/[strutils]
 
 type
     BracketianTokenKinds* = enum
-        btNothing
-        btBool, btInt, btFloat, btString
+        btNil, btBool, btInt, btFloat, btString
         btSymbol
         btCall, btList
 
     BracketianToken* = ref object
         case kind*: BracketianTokenKinds
-        of btNothing: discard
+        of btNil: discard
         of btInt: intVal*: int
         of btFloat: floatVal*: float
         of btString: strVal*: string
@@ -31,29 +30,19 @@ type
 
 func `$`*(tk: BToken): string =
     case tk.kind:
-    of btNothing:
-        "nil"
-
-    of btBool:
-        $tk.boolVal
-
-    of btFloat:
-        $tk.floatVal
-
-    of btInt:
-        $tk.intVal
-
-    of btString:
-        '"' & tk.strVal & '"'
-
-    of btSymbol:
-        tk.symbol
+    of btNil: "nil"
+    of btBool: $tk.boolVal
+    of btFloat: $tk.floatVal
+    of btInt: $tk.intVal
+    of btString: '"' & tk.strVal & '"'
 
     of btList:
         '(' & tk.data.join(" ") & ')'
 
     of btCall:
         '[' & tk.caller & ' ' & tk.args.join(" ") & ']'
+    
+    of btSymbol: tk.symbol
 
 
 proc parse*(s: ref string,
@@ -87,8 +76,11 @@ proc parse*(s: ref string,
                 let t = s[temp .. i-1]
 
                 acc.add:
-                    if t in ["true", "false"]:
+                    case t:
+                    of "true", "false":
                         BToken(kind: btBool, boolVal: parseBool t)
+                    of "nil":
+                        BToken(kind: btNil)
                     else:
                         BToken(kind: btSymbol, symbol: t)
 

@@ -11,6 +11,8 @@
   [b "my name"]
 
   [link [b "aparat"] "https://aparat.com"]
+  [asset "./video.mp4"]
 ]
 
 (1 2 "hey" false 5.9)
+[: "name" nil  "age" 17]

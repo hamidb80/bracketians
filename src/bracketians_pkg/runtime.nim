@@ -5,14 +5,15 @@ import parser
 
 type
     BracketianNodeKinds* = enum
-        bnNothing, bnBool, bnInt, bnFloat, bnString
+        bnNothing, 
+        bnNil, bnBool, bnInt, bnFloat, bnString
         bnList, bnTable, bnLambda
 
     Symbol* = string
 
     BracketianNode* = ref object
         case kind*: BracketianNodeKinds:
-        of bnNothing: discard
+        of bnNothing, bnNil: discard
         of bnBool: boolVal*: bool
         of bnInt: intVal*: int
         of bnFloat: floatVal*: float
@@ -70,6 +71,7 @@ func getSymbol*(tk: BToken): string =
 func `$`*(n: BNode): string =
     case n.kind:
     of bnNothing: ""
+    of bnNil: "nil"
     of bnBool: $n.boolVal
     of bnInt: $n.intVal
     of bnFloat: $n.floatVal
@@ -99,7 +101,7 @@ type
 
 func reprImpl*(n: BNode, acc: var seq[SerializedToken]) =
     case n.kind:
-    of bnNothing, bnBool:
+    of bnNothing, bnBool, bnNil:
         acc.add (stBuiltIn, $n)
 
     of bnInt, bnFloat:
@@ -123,11 +125,17 @@ func reprImpl*(n: BNode, acc: var seq[SerializedToken]) =
     of bnTable:
         acc.add (stNotation, "{")
 
+        let ln = n.table.len
+        var c = 0
         for k, v in n.table:
             reprImpl(k, acc)
             acc.add (stNotation, ":")
             acc.add (stSpace, " ")
             reprImpl(v, acc)
+
+            c.inc
+            if c != ln:
+                acc.add (stSpace, " ")
 
         acc.add (stNotation, "}")
 
@@ -167,6 +175,8 @@ proc inspect*(n: BNode) =
 # ----------------------------
 
 # TODO add kind assertion for return type
+# TODO add Optional paramter
+# FIXME no return type error
 macro bfKindAssersion*(routine) =
     ## func gt(x, y: BNode{bInt}, z: Bnode{bBool}): BNode{bBool} =
     ##   ...
@@ -320,6 +330,9 @@ func bJoinStr(infix: BNode{bnString},
 
     toBNode strs.mapIt(it.strVal).join infix.strVal
 
+func bConcat(strs: varargs[BNode]): BNode{bnString} {.bfKindAssersion, infer.} =
+    bJoinStr strs
+
 func bEq(a, b: BNode): BNode{bnBool} {.bfKindAssersion, infer.} =
     assert a.kind == b.kind
 
@@ -370,6 +383,7 @@ let
         "len": bLen,
         "echo": bEcho,
         "join": bJoinStr,
+        "&": bConcat,
 
         "not": bNot,
 
@@ -392,7 +406,7 @@ proc repl*(tks: seq[BToken], stack: var Stack, fm: FnMap, mm: MacroMap): BNode
 
 proc eval*(tk: BToken, stack: var Stack, fm: FnMap, mm: MacroMap): BNode =
     case tk.kind:
-    of btNothing: BNode(kind: bnNothing)
+    of btNil: BNode(kind: bnNil)
     of btInt: toBNode(tk.intval)
     of btFloat: toBNode(tk.floatVal)
     of btString: toBNode(tk.strVal)
