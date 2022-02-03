@@ -1,4 +1,4 @@
-import std/[tables, sequtils, strformat, strutils, macros, hashes]
+import std/[tables, sequtils, strformat, strutils, macros, hashes, terminal]
 import macroplus
 import parser
 
@@ -40,31 +40,6 @@ type
     MacroMap* = Table[Symbol, BracketianMacro]
 
 
-func `$`*(n: BNode): string =
-    case n.kind:
-    of bnNothing:
-        "nil"
-
-    of bnBool:
-        $n.boolVal
-
-    of bnInt:
-        $n.intVal
-
-    of bnFloat:
-        $n.floatVal
-
-    of bnString:
-        '"' & n.strVal & '"'
-
-    of bnList:
-        '(' & n.data.join(" ") & ')'
-
-    of bnTable:
-        '{' & n.table.pairs.toseq.mapIt(fmt"{it[0]}: {it[1]}").join(" ") & '}'
-
-    of bnLambda:
-        "[lambda [" & n.args.join(" ") & "] " & n.instructions.join(" ") & " ]"
 
 func toBNode*(i: int): BNode =
     BNode(kind: bnInt, intVal: i)
@@ -92,8 +67,102 @@ func getSymbol*(tk: BToken): string =
     assert tk.kind == btSymbol
     tk.symbol
 
+func `$`*(n: BNode): string =
+    case n.kind:
+    of bnNothing: ""
+    of bnBool: $n.boolVal
+    of bnInt: $n.intVal
+    of bnFloat: $n.floatVal
+    of bnString: n.strVal
+    of bnList: '(' & n.data.join(" ") & ')'
+    of bnLambda: "fn: ..."
+    of bnTable:
+        '{' & n.table.pairs.toseq.mapIt(fmt"{it[0]}: {it[1]}").join(" ") & '}'
+
 func hash*(n: BNode): Hash =
     hash $n
+
+# ----------------------------
+
+type
+    SerializedTokenKinds = enum
+        stNotation
+        stBuiltIn
+        stNumber
+        stString
+        stSpace
+
+    SerializedToken = tuple
+        kind: SerializedTokenKinds
+        content: string
+
+
+func reprImpl*(n: BNode, acc: var seq[SerializedToken]) =
+    case n.kind:
+    of bnNothing, bnBool:
+        acc.add (stBuiltIn, $n)
+
+    of bnInt, bnFloat:
+        acc.add (stNumber, $n)
+
+    of bnString:
+        acc.add (stString, '"' & $n & '"')
+
+    of bnList:
+        acc.add (stNotation, "(")
+
+        for i, c in n.data:
+            reprImpl(c, acc)
+
+            if i != n.data.high:
+                acc.add (stSpace, " ")
+
+
+        acc.add (stNotation, ")")
+
+    of bnTable:
+        acc.add (stNotation, "{")
+
+        for k, v in n.table:
+            reprImpl(k, acc)
+            acc.add (stNotation, ":")
+            acc.add (stSpace, " ")
+            reprImpl(v, acc)
+
+        acc.add (stNotation, "}")
+
+
+    of bnLambda:
+        acc.add (stNotation, "[")
+        acc.add (stBuiltIn, "lambda")
+        acc.add (stNotation, "(")
+        acc.add (stBuiltIn, n.args.join(" "))
+        acc.add (stNotation, ")")
+        acc.add (stBuiltIn, n.instructions.join(" "))
+        acc.add (stNotation, "]")
+
+func repr*(n: BNode): seq[SerializedToken] =
+    reprImpl(n, result)
+
+func `$`*(s: seq[SerializedToken]): string =
+    s.mapIt(it.content).join " "
+
+proc inspect*(n: BNode) =
+    let tokens = repr n
+
+    for t in tokens:
+        stdout.setForeGroundColor:
+            case t.kind:
+            of stNotation: fgCyan
+            of stBuiltIn: fgYellow
+            of stNumber: fgMagenta
+            of stString: fgGreen
+            of stSpace: fgDefault
+
+        stdout.write t.content
+        resetAttributes stdout
+
+    stdout.write "\n"
 
 # ----------------------------
 
