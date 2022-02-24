@@ -40,7 +40,7 @@ type
 
     MacroMap* = Table[Symbol, BracketianMacro]
 
-const bnNumber = {bnInt, bnFloat}
+const bnNumber* = {bnInt, bnFloat}
 
 
 func toBNode*(i: int): BNode =
@@ -461,6 +461,7 @@ let
         "include": mInclude
     }
 
+# TODO add support for varargs in lambda
 # --------------------------
 
 proc repl*(tks: seq[BToken], stack: var Stack, fm: FnMap, mm: MacroMap): BNode
