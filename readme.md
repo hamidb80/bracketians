@@ -51,13 +51,13 @@ these are more advanced data types, you'll know about them below.
 (1 2 3 4 5)
 ```
 
-#### creating a table
+### creating a table
 you call a special function `:`
 ```nim
 [: name "ali" age 12]
 ```
 
-#### define a var
+### define a var
 ```nim
 [def 
   var1 value1
