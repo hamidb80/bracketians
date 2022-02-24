@@ -1,7 +1,13 @@
 # Bracketians!
 it's a programming like lisp, that you can use it for documentation or a replacement for latex software.
 
-file format: `.bm` Bracketian Markdown
+it's completely modular and extensible.
+
+file format: `.bm` Bracketian Markdown.
+
+**CURRENT STATE**: development
+
+feel free to tweak it for your own use case.
 
 ## Basics:
 
@@ -61,8 +67,11 @@ you call a special function `:`
 ```
 
 ### define a lambda (closure function)
+with `lambda` or `fn`.
+
 ```nim
 [def sum [lambda (x y) [+ x y]]]
+[def minus [fn (x y) [- x y]]]
 ```
 
 ### call a lambda
@@ -70,8 +79,16 @@ you call a special function `:`
 [call sum (1 2)]
 ```
 
-## usage
+### if statement
+```nim
+[if cond true false]
+```
+
+## more examples
 see `examples/` and `tests/`
+
+## repl
+complie and run `tests/interactive_shell.nim`
 
 ## helpful links:
 * [lispy](https://norvig.com/lispy.html)
