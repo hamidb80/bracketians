@@ -36,19 +36,19 @@ these are more advanced data types, you'll know about them below.
 
 ### calling a function
 ```nim
-call [your-function arg1 arg2 ...]
+[call your-function (arg1 arg2 ...)]
 ```
 
 ### creating a list
 
 **using a function call**:
 ```nim
-[!] => [! 1 2 3 4 5]
+[! 1 2 3 4 5]
 ```
 
 **using special syntax**:
 ```nim
-() => (1 2 3 4 5)
+(1 2 3 4 5)
 ```
 
 #### creating a table
