@@ -5,7 +5,7 @@ it's completely modular and extensible.
 
 file format: `.bm` Bracketian Markdown.
 
-**CURRENT STATE**: development
+**CURRENT STATE**: under development
 
 feel free to tweak it for your own use case.
 
