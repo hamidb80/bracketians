@@ -87,7 +87,7 @@ with `lambda` or `fn`.
 ## more examples
 see `examples/` and `tests/`
 
-## repl
+## REPL
 complie and run `tests/interactive_shell.nim`
 
 ## helpful links:
