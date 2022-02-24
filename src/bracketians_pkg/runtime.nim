@@ -40,6 +40,7 @@ type
 
     MacroMap* = Table[Symbol, BracketianMacro]
 
+const bnNumber = {bnInt, bnFloat}
 
 
 func toBNode*(i: int): BNode =
@@ -63,6 +64,13 @@ func newBList*(nodes: seq[BNode] = @[]): BNode =
 func isTrue*(n: BNode): bool =
     assert n.kind == bnBool
     n.boolVal
+
+func getFloat*(n: BNode): float =
+    case n.kind:
+    of bnInt: n.intval.toFloat
+    of bnFloat: n.floatVal
+    else:
+        raise newException(ValueError, "cannot get float value of type: " & $n.kind)
 
 func getSymbol*(tk: BToken): string =
     assert tk.kind == btSymbol
@@ -309,25 +317,60 @@ func defLambda(nodes: seq[BToken]): BNode =
 
 # --------------------------
 
-func bLen(s: BNode{bnString}): BNode{bnInt} {.bfKindAssersion, infer.} =
-    toBNode s.strVal.len
+template isNotNumberError(kind): untyped =
+    newException(ValueError, "expect number but got: " & $kind)
 
 func bAdd(numbers: varargs[BNode]): BNode {.infer.} =
-    let kinds = numbers.mapIt(it.kind).deduplicate
-    assert kinds.len == 1 and kinds[0] in {bnInt, bnFloat}
-
-    var res = (0, 0.0)
+    var acc = 0.0
 
     for n in numbers:
         case n.kind:
-        of bnInt: res[0].inc n.intVal
-        of bnFloat: res[1] += n.floatVal
-        else: discard
+        of bnInt: acc += n.intVal.toFloat
+        of bnFloat: acc += n.floatVal
+        else: raise isNotNumberError n.kind
 
-    if kinds[0] == bnInt:
-        toBnode res[0]
-    else:
-        toBNode res[1]
+    toBNode acc
+
+func bMinus(numbers: varargs[BNode]): BNode {.infer.} =
+    var acc = 0.0
+
+    for (i, n) in numbers.pairs:
+        let sg = 
+            if i == 0: 1.0
+            else: -1.0
+
+        case n.kind:
+        of bnInt: acc += sg * n.intVal.toFloat
+        of bnFloat: acc += sg * n.floatVal
+        else: raise isNotNumberError n.kind
+
+    toBNode acc
+
+func bMulti(numbers: varargs[BNode]): BNode {.infer.} =
+    var acc = 1.0
+
+    for n in numbers:
+        case n.kind:
+        of bnInt: acc *= n.intval.toFloat
+        of bnFloat: acc *= n.floatVal
+        else: raise isNotNumberError n.kind
+
+    toBNode acc
+
+func bDivide(numbers: varargs[BNode]): BNode {.infer.} =
+    var acc = getFloat numbers[0]
+
+    for n in numbers[1..^1]:
+        case n.kind:
+        of bnInt: acc = acc / n.intval.toFloat
+        of bnFloat: acc = acc / n.floatVal
+        else: raise isNotNumberError n.kind
+
+    toBNode acc
+
+
+func bLen(s: BNode{bnString}): BNode{bnInt} {.bfKindAssersion, infer.} =
+    toBNode s.strVal.len
 
 func bJoinStr(infix: BNode{bnString},
                 strs: varargs[BNode]): BNode{bnString} {.bfKindAssersion, infer.} =
@@ -401,6 +444,9 @@ let
         "not": bNot,
 
         "+": bAdd,
+        "-": bMinus,
+        "*": bMulti,
+        "/": bDivide,
 
         "<": bLt,
         "<=": bLte,

@@ -41,14 +41,12 @@ func `$`*(tk: BToken): string =
 
     of btCall:
         '[' & tk.caller & ' ' & tk.args.join(" ") & ']'
-    
+
     of btSymbol: tk.symbol
 
-
-proc parse*(s: ref string,
-            startI: int, acc: var seq[BToken]): int =
+# TODO catch syntax errors
+proc parse*(s: ref string, startI: int, acc: var seq[BToken]): int =
     ## return the last index that was there
-
     const rrr = {']', ')'}
 
     var
@@ -62,8 +60,10 @@ proc parse*(s: ref string,
         if c in rrr:
             return i
 
-    while i < s[].len:
-        let c = s[i]
+    while i <= s[].len:
+        let c =
+            if i == s[].len: ' '
+            else: s[i]
 
         case state:
         of psString:

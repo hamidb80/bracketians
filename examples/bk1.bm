@@ -10,17 +10,6 @@
 ]
 
 [ch 1 
-  [multi-lang [:
-
-    EN [&
-      "dad"
-    ]
-
-    FA [&
-      "متن 1"
-    ]
-  ]]
-
   [ref myFormula [LatEx "2^2 + 2*4 - 1"]]
 ]
 
