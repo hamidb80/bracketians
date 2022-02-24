@@ -299,7 +299,7 @@ func defLambda(nodes: seq[BToken]): BNode =
         body = nodes[1..^1]
 
     assert argsList.kind == btList
-    assert argsList.data.allit(it.kind == btSymbol)
+    assert argsList.data.allIt(it.kind == btSymbol)
 
     BNode(kind: bnLambda,
         args: argsList.data.mapIt(it.symbol),

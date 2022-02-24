@@ -6,14 +6,9 @@
 ]
 
 (1 2 "hey" false 5.9)
-[: "name" nil  "age" 17]
+[: "name" nil "age" 17]
 
 [ch "final"
-  [ref "myName"
-    "::this is it::"
-  ]
-
-  [addr "myName"
-    ".ref to."
-  ]
+  [ref "myName" "::this is it::"]
+  [addr "myName" ".ref to."]
 ]

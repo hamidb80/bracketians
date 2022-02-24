@@ -1,2 +1,5 @@
 play.*
 *.exe
+
+/temp/*
+!/temp/.nomedia
