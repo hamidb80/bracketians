@@ -92,4 +92,4 @@ complie and run `tests/interactive_shell.nim`
 
 ## helpful links:
 * [lispy](https://norvig.com/lispy.html)
-* [inspiration](https://github.com/xigoi/xidoc)
+* [xidoc](https://github.com/xigoi/xidoc)
