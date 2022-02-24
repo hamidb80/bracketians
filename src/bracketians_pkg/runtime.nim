@@ -282,13 +282,15 @@ macro infer*(routine) =
 
 # --------------------------
 
-func bLen(s: BNode{bnString}): BNode{bnInt} {.bfKindAssersion, infer.} =
-    toBNode s.strVal.len
-
 proc bEcho(bn: BNode): BNode {.infer.} =
     {.cast(nosideEffect).}:
         echo bn
 
+    newBNothing()
+
+proc bInspect(n: BNode): BNode {.infer.} =
+    {.cast(noSideEffect).}:
+        inspect n
     newBNothing()
 
 func defLambda(nodes: seq[BToken]): BNode =
@@ -306,6 +308,9 @@ func defLambda(nodes: seq[BToken]): BNode =
         instructions: body)
 
 # --------------------------
+
+func bLen(s: BNode{bnString}): BNode{bnInt} {.bfKindAssersion, infer.} =
+    toBNode s.strVal.len
 
 func bAdd(numbers: varargs[BNode]): BNode {.infer.} =
     let kinds = numbers.mapIt(it.kind).deduplicate
@@ -388,6 +393,8 @@ let
     defaultFunctionMap*: FnMap = toTable {
         "len": bLen,
         "echo": bEcho,
+        "inspect": bInspect,
+        
         "join": bJoinStr,
         "&": bConcat,
 

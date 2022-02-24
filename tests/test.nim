@@ -1,4 +1,3 @@
-import std/[strutils]
 import bracketians
 
-echo parse(readFile "./examples/eg4.bm").repl
+echo repl parse readFile "./examples/eg1.bm"

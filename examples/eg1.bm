@@ -1,31 +1,8 @@
-[info 
-  author "@hamidb80"
-  email "hr.bolouri@gmail.com"
-  copyright "MIT"
-]
+[inspect [if [< 1 2] "true!" "false!"]]
 
-[def
-  age 12
-  name "hamid"
-]
+[inspect [:
+  "name" "hamid"
+  "age" 20
+]]
 
-[ch 1 
-  [multi-lang [:
-
-    EN [&
-      "dad"
-    ]
-
-    FA [&
-      "متن 1"
-    ]
-  ]]
-
-  [ref myFormula [LatEx "2^2 + 2*4 - 1"]]
-]
-
-[ch 2
-  [addr myFormula]
-  [pic "./me.png"]
-  [include "./another-page.bm"]
-]
+[inspect (1 2.5 "hey" false)]
