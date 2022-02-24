@@ -110,5 +110,5 @@ fm["addr"] = bResolveRef
 
 # go ---------------------------------------
 
-inspect parse(readFile "./examples/play.book.bm").repl(fm)
+inspect parse(readFile "./examples/bk1.bm").repl(fm)
 writeFile "./temp/play.html", genBook chapters
