@@ -5,7 +5,7 @@ it's completely modular and extensible.
 
 file format: `.bm` Bracketian Markdown.
 
-**CURRENT STATE**: development
+**CURRENT STATE**: under development
 
 feel free to tweak it for your own use case.
 
@@ -36,7 +36,7 @@ these are more advanced data types, you'll know about them below.
 
 ### calling a function
 ```nim
-[call your-function (arg1 arg2 ...)]
+[function-name arg1 arg2 ...]
 ```
 
 ### creating a list
@@ -92,4 +92,4 @@ complie and run `tests/interactive_shell.nim`
 
 ## helpful links:
 * [lispy](https://norvig.com/lispy.html)
-* [inspiration](https://github.com/xigoi/xidoc)
+* [xidoc](https://github.com/xigoi/xidoc)
