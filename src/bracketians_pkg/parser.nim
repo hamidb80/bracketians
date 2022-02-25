@@ -45,7 +45,7 @@ func `$`*(tk: BToken): string =
     of btSymbol: tk.symbol
 
 # TODO catch syntax errors
-proc parse*(s: ref string, startI: int, acc: var seq[BToken]): int =
+proc parse(s: ptr string, startI: int, acc: var seq[BToken]): int =
     ## return the last index that was there
     const rrr = {']', ')'}
 
@@ -138,6 +138,4 @@ proc parse*(s: ref string, startI: int, acc: var seq[BToken]): int =
         i.inc
 
 proc parse*(s: string): seq[BToken] =
-    let sref = new string
-    sref[] = s
-    discard parse(sref, 0, result)
+    discard parse(unsafeAddr s, 0, result)
